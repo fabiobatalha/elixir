@@ -16,14 +16,41 @@ html_regex = re.compile(r'<body[^>]*>(.*)</body>', re.DOTALL | re.IGNORECASE)
 midias_regex = re.compile(r'href=["\'](.*)["\']', re.IGNORECASE)
 images_regex = re.compile(r'["\'](/img.*|\\img.*)["\']', re.IGNORECASE)
 
+logger = logging.getLogger(__name__)
+
+def _config_logging(logging_level='INFO', logging_file=None):
+
+    allowed_levels = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARNING': logging.WARNING,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL
+    }
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    
+    logger.setLevel(allowed_levels.get(logging_level, 'INFO'))
+
+    if logging_file:
+        hl = logging.FileHandler(logging_file, mode='a')
+    else:
+        hl = logging.StreamHandler()
+
+    hl.setFormatter(formatter)
+    hl.setLevel(allowed_levels.get(logging_level, 'INFO'))
+
+    logger.addHandler(hl)
+
 
 def html_decode(string):
 
     try:
         string = unescape(string)
-        logging.info('HTML entities replaced')
+        logger.info('HTML entities replaced')
     except:
-        logging.info('Unable to replace the HTML entities')
+        logger.info('Unable to replace the HTML entities')
         return string
 
     return string
@@ -36,10 +63,10 @@ def loadXML(pid):
             url,
             timeout=10
         ).text.strip()
-        logging.info('XML retrieved from (%s)' % url)
+        logger.info('XML retrieved from (%s)' % url)
     except:
         raise
-        logging.error('Timeout opening (%s)' % url)
+        logger.error('Timeout opening (%s)' % url)
 
     return xml
 
@@ -53,15 +80,15 @@ def load_rawdata(pid):
                 timeout=10
             ).text.strip()
         )
-        logging.info('JSON data retrieved from (%s)' % url)
+        logger.info('JSON data retrieved from (%s)' % url)
     except:
-        logging.error('Timeout opening (%s)' % 'http://192.168.1.162:7000/api/v1/article?code=%s&format=xmlwos' % pid)
+        logger.error('Timeout opening (%s)' % 'http://192.168.1.162:7000/api/v1/article?code=%s&format=xmlwos' % pid)
 
     try:
         rawdata = scielodocument.Article(json_data)
-        logging.info('JSON data parsed')
+        logger.info('JSON data parsed')
     except:
-        logging.error('Unable to parse json retrieved by (%s)' % url)
+        logger.error('Unable to parse json retrieved by (%s)' % url)
 
     return rawdata
 
@@ -70,10 +97,10 @@ def is_valid_pid(pid):
     pid_regex = re.compile("^S[0-9]{4}-[0-9]{3}[0-9xX][0-2][0-9]{3}[0-9]{4}[0-9]{5}$", re.IGNORECASE)
 
     if pid_regex.search(pid) is None:
-        logging.error('Invalid PID (%s)' % pid)
+        logger.error('Invalid PID (%s)' % pid)
         return False
 
-    logging.info('Valid PID (%s)' % pid)
+    logger.info('Valid PID (%s)' % pid)
 
     return True
 
@@ -90,9 +117,9 @@ def read_file(fl, replace_entities=False, encoding='utf-8', version='sps'):
 
     try:
         content = codecs.open(fl, 'r', encoding=encoding).read()
-        logging.debug('Local file readed (%s)' % fl)
+        logger.debug('Local file readed (%s)' % fl)
     except FileNotFoundError:
-        logging.error('Unable to read file (%s)' % fl)
+        logger.error('Unable to read file (%s)' % fl)
         raise FileNotFoundError(
             u'File does not exists: %s' % fl
         )
@@ -150,9 +177,9 @@ def get_xml_document_images(document):
 
     try:
         xml = etree.parse(document)
-        logging.debug('XML file parsed')
+        logger.debug('XML file parsed')
     except:
-        logging.error('XML file could not be parsed')
+        logger.error('XML file could not be parsed')
         raise
 
     graphics = xml.findall('//graphic')+xml.findall('//inline-graphic')
@@ -171,9 +198,9 @@ def get_xml_document_midias(document):
 
     try:
         xml = etree.parse(document)
-        logging.debug('XML file parsed')
+        logger.debug('XML file parsed')
     except:
-        logging.error('XML file could not be parsed')
+        logger.error('XML file could not be parsed')
         raise
 
     midias = xml.findall('//midia')
@@ -203,10 +230,10 @@ def check_images_availability(available_images, document_images):
 
     for image_name, image_path in html_images.items():
         if image_name in av_images:
-            logging.info('Image available in the file system (%s)' % image_path)
+            logger.info('Image available in the file system (%s)' % image_path)
             images_availability.append((av_images[image_name], True))
         else:
-            logging.warning('Image not available in the file system (%s)' % image_path)
+            logger.warning('Image not available in the file system (%s)' % image_path)
             images_availability.append((image_path, False))
 
     return images_availability
@@ -216,9 +243,9 @@ def list_path(path):
 
     try:
         files = os.listdir(path)
-        logging.debug('Source directory found (%s)' % path)
+        logger.debug('Source directory found (%s)' % path)
     except FileNotFoundError:
-        logging.error('Source directory not found (%s)' % path)
+        logger.error('Source directory not found (%s)' % path)
         raise FileNotFoundError(
             u'Source directory does not exists: %s' % path
         )
@@ -251,9 +278,9 @@ class Article(object):
 
         try:
             os.listdir(source_dir)
-            logging.debug('Source directory found (%s)' % source_dir)
+            logger.debug('Source directory found (%s)' % source_dir)
         except FileNotFoundError:
-            logging.error('Source directory not found (%s)' % source_dir)
+            logger.error('Source directory not found (%s)' % source_dir)
             raise FileNotFoundError(u'Invalid source directory: %s' % source_dir)
 
         self.deposit_dir = deposit_dir or '.'
@@ -274,27 +301,27 @@ class Article(object):
     def _journal_issn(self):
         issn = self.xylose.scielo_issn
 
-        logging.info('Journal ISSN for source files is (%s)' % issn)
+        logger.info('Journal ISSN for source files is (%s)' % issn)
 
         return issn
 
     def _journal_acronym(self):
         ja = self.xylose.journal_acronym
 
-        logging.info('Journal acronym for source files is (%s)' % ja)
+        logger.info('Journal acronym for source files is (%s)' % ja)
 
         return ja
 
     def _file_code(self):
 
-        logging.info('File code is (%s)' % self.xylose.file_code)
+        logger.info('File code is (%s)' % self.xylose.file_code())
 
-        return self.xylose.file_code
+        return self.xylose.file_code()
 
     def _content_version(self):
         """
         This method retrieve the version of the document. If the file with
-        the document content is an XML SPS, the method will retrieve 'rsps',
+        the document content is an XML SPS, the method will retrieve 'sps',
         otherwise, if the file is an html the method will retrieve 'legacy'.
         This is checked using the file extension of do path stored into the
         field v702.
@@ -307,7 +334,7 @@ class Article(object):
         if extension == 'xml':
             version = 'sps'
 
-        logging.info('Content version (%s)' % version)
+        logger.info('Content version (%s)' % version)
 
         return version
 
@@ -342,7 +369,7 @@ class Article(object):
 
         issue_label = issue_dir.lower()
 
-        logging.info('Issue label for source files is (%s)' % issue_label)
+        logger.info('Issue label for source files is (%s)' % issue_label)
 
         return issue_label
 
@@ -350,13 +377,13 @@ class Article(object):
     def _get_body_from_files(self):
 
         htmls = {}
-        docs = []
         for doc in self.list_documents:
             filename = doc.split('/')[-1]
             x = htmls.setdefault(filename.replace('_b', '_'), {'files': []})
             htmls[filename.replace('_b', '_')]['files'].append(doc)
 
         for html, filenames in htmls.items():
+            docs = []
             for doc in filenames['files']:
                 docs.append(
                     read_file(
@@ -383,10 +410,10 @@ class Article(object):
         images = ['/'.join([path, x]) for x in list_path(path)]
 
         if len(images) == 0:
-            logging.debug('No source images available for the issue (%s)' % self.issue_label)
+            logger.debug('No source images available for the issue (%s)' % self.issue_label)
 
         for image in images:
-            logging.debug('Image (%s) available in source for the issue (%s)' % (image, self.issue_label))
+            logger.debug('Image (%s) available in source for the issue (%s)' % (image, self.issue_label))
 
         return images
 
@@ -402,10 +429,10 @@ class Article(object):
                 doc_images += get_document_images(document)
 
         if len(doc_images) == 0:
-            logging.info('Images not required for (%s)' % (self.pid))
+            logger.info('Images not required for (%s)' % (self.pid))
 
         for image in doc_images:
-            logging.info('Image (%s) required for (%s)' % (image, self.pid))
+            logger.info('Image (%s) required for (%s)' % (image, self.pid))
 
         return doc_images
 
@@ -421,10 +448,10 @@ class Article(object):
                 doc_midias += get_document_midias(document)
 
         if len(doc_midias) == 0:
-            logging.info('Midia not required for (%s)' % (self.pid))
+            logger.info('Midia not required for (%s)' % (self.pid))
 
         for midia in doc_midias:
-            logging.info('Midia (%s) required for (%s)' % (midia, self.pid))
+            logger.info('Midia (%s) required for (%s)' % (midia, self.pid))
 
         return doc_midias
 
@@ -438,10 +465,10 @@ class Article(object):
         pdfs = ['/'.join([path, x]) for x in list_path(path) if self.file_code in x]
 
         if len(pdfs) == 0:
-            logging.warning('PDF not found for (%s)' % self.pid)
+            logger.warning('PDF not found for (%s)' % self.pid)
 
         for pdf in pdfs:
-            logging.info('PDF (%s) found for (%s)' % (pdf, self.pid))
+            logger.info('PDF (%s) found for (%s)' % (pdf, self.pid))
 
         return pdfs
 
@@ -455,10 +482,10 @@ class Article(object):
         htmls = ['/'.join([path1, x]) for x in list_path(path1) if self.file_code in x]
 
         if len(htmls) == 0:
-            logging.warning('HTML not found for (%s)' % self.pid)
+            logger.warning('HTML not found for (%s)' % self.pid)
 
         for html in htmls:
-            logging.info('HTML (%s) found for (%s)' % (html, self.pid))
+            logger.info('HTML (%s) found for (%s)' % (html, self.pid))
 
         return htmls
 
@@ -472,10 +499,10 @@ class Article(object):
         xmls = ['/'.join([path, x]) for x in list_path(path) if self.file_code in x]
 
         if len(xmls) == 0:
-            logging.warning('XML not found for (%s)' % self.pid)
+            logger.warning('XML not found for (%s)' % self.pid)
 
         for xml in xmls:
-            logging.info('XML (%s) found for (%s)' % (xml, self.pid))
+            logger.info('XML (%s) found for (%s)' % (xml, self.pid))
 
         return xmls
 
@@ -502,9 +529,9 @@ class Article(object):
 
         try:
             xml = etree.fromstring(xml)
-            logging.debug('XML file parsed')
+            logger.debug('XML file parsed')
         except:
-            logging.error('XML file could not be parsed')
+            logger.error('XML file could not be parsed')
             raise
 
         nsmap = xml.nsmap
@@ -581,4 +608,4 @@ class Article(object):
         with codecs.open(fn, 'wb') as f:
             f.write(zipf.read())
 
-        logging.info('ZIP file writen at (%s)' % fn)
+        logger.info('ZIP file writen at (%s)' % fn)

@@ -3,6 +3,32 @@ from zipfile import ZipFile
 import codecs
 import logging
 
+logger = logging.getLogger(__name__)
+
+def _config_logging(logging_level='INFO', logging_file=None):
+
+    allowed_levels = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARNING': logging.WARNING,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL
+    }
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    
+    logger.setLevel(allowed_levels.get(logging_level, 'INFO'))
+
+    if logging_file:
+        hl = logging.FileHandler(logging_file, mode='a')
+    else:
+        hl = logging.StreamHandler()
+
+    hl.setFormatter(formatter)
+    hl.setLevel(allowed_levels.get(logging_level, 'INFO'))
+
+    logger.addHandler(hl)
 
 class WrapFiles(object):
     def __init__(self, *args):
@@ -25,10 +51,10 @@ class WrapFiles(object):
             try:
                 self.thezip.writestr(name, x.read())
             except FileNotFoundError:
-                logging.info('Unable to prepare zip file, file not found (%s)' % item)
+                logger.info('Unable to prepare zip file, file not found (%s)' % item)
                 raise
 
-        logging.info('Zip file prepared')
+        logger.info('Zip file prepared')
 
         return self.thezip
 

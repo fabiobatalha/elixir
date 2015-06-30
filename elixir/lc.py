@@ -3,8 +3,7 @@ import logging
 
 from elixir import feedstock
 
-__version__ = '0.0.1'
-
+logger = logging.getLogger(__name__)
 
 def _config_logging(logging_level='INFO', logging_file=None):
 
@@ -16,22 +15,26 @@ def _config_logging(logging_level='INFO', logging_file=None):
         'CRITICAL': logging.CRITICAL
     }
 
-    logging_config = {
-        'level': allowed_levels.get(logging_level, 'INFO'),
-        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    }
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    
+    logger.setLevel(allowed_levels.get(logging_level, 'INFO'))
 
     if logging_file:
-        logging_config['filename'] = logging_file
+        hl = logging.FileHandler(logging_file, mode='a')
+    else:
+        hl = logging.StreamHandler()
 
-    logging.basicConfig(**logging_config)
+    hl.setFormatter(formatter)
+    hl.setLevel(allowed_levels.get(logging_level, 'INFO'))
 
+    logger.addHandler(hl)
 
-def main(pid, source_dir='.', logging_level='Info', logging_file=None, deposit_dir=None):
+    return logger
 
-    _config_logging(logging_level, logging_file)
+def main(pid, source_dir='.', deposit_dir=None):
 
-    logging.info('Starting to pack a document')
+    logger.info('Starting to pack a document')
 
     if feedstock.is_valid_pid(pid):
         xml = feedstock.loadXML(pid)
@@ -83,11 +86,11 @@ def argp():
 
     args = parser.parse_args()
 
+    _config_logging(args.logging_level, args.logging_file)
+
     main(
         args.pid,
         source_dir=args.source_dir,
-        logging_level=args.logging_level,
-        logging_file=args.logging_file,
         deposit_dir=args.deposit_dir
     )
 

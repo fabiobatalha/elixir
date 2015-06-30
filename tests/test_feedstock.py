@@ -27,26 +27,6 @@ def setupModule():
 
 class FeedStockTests(unittest.TestCase):
 
-    def test_loadXML(self):
-
-        with unittest.mock.patch('requests.get'):
-            rqts = requests.get(u'ANY URL')
-            rqts.text = document_xml
-            fs = feedstock.loadXML(u'S0034-89102013000400674')
-
-        self.assertEqual(fs[0:20], u'<article article-typ')
-
-    def test_load_rawdata(self):
-
-        with unittest.mock.patch('requests.get'):
-            rqts = requests.get(u'ANY URL')
-            rqts.text = document_json
-            fs = feedstock.load_rawdata(u'S0034-89102013000400674')
-
-        self.assertEqual(
-            fs.original_title(),
-            u'Avaliacao da confiabilidade e validade do Indice de Qualidade da Dieta Revisado'
-        )
 
     def test_fix_path(self):
         html = """
@@ -314,6 +294,7 @@ class FeedStockTests(unittest.TestCase):
 class Article(unittest.TestCase):
 
     def setUp(self):
+        setupModule()
         raw_data = scielodocument.Article(json.loads(document_json))
         self._article = feedstock.Article(
             'S0034-89102013000400674',
@@ -444,12 +425,12 @@ class Article(unittest.TestCase):
         xml = article.xml_sps_with_legacy_data
 
         translations = xml.findall('.//sub-article')
-        text_pt = xml.find('.//sub-article[@{http://www.w3.org/XML/1998/namespace}lang="pt"]/body/p').text
-        text_en = xml.find('.//sub-article[@{http://www.w3.org/XML/1998/namespace}lang="en"]/body/p').text
+        text_pt = xml.find('./sub-article[@{http://www.w3.org/XML/1998/namespace}lang="pt"]/body/p').text
+        text_en = xml.find('./sub-article[@{http://www.w3.org/XML/1998/namespace}lang="en"]/body/p').text
 
         self.assertEqual(len(translations), 2)
-        self.assertTrue('como perspectivas para a estimativa de custos de acidentes de trabalho' in text_pt)
-        self.assertTrue('analysis were the lack ofinformation on age and gender' in text_en)
+        self.assertTrue('Os acidentes de trabalho são evitáveis e causam um grande impacto sobre a produtividade e a economia' in text_pt)
+        self.assertTrue('Occupational accidents are avoidable and cause a great impacton productivity and on the economy' in text_en)
 
     def test_version_xml(self):
 

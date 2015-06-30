@@ -15,6 +15,9 @@ def setupModule():
 
 class UtilsTests(unittest.TestCase):
 
+    def setUp(self):
+        setupModule()
+
     def test_wrap_files_when_instanciating(self):
 
         wrap_files = utils.WrapFiles(

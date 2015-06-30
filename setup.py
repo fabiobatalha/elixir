@@ -3,20 +3,17 @@ import sys
 import re
 from setuptools import setup, Extension
 
-from elixir import elixir
-
-version = elixir.__version__
-
 install_requires = [
     'requests',
     'xylose',
     'lxml'
 ]
-tests_require = install_requires[:]
+
+tests_require = []
 
 setup(
     name="elixir",
-    version=version,
+    version="0.1",
     description="Library to bring alive the legacy documents from the SciELO Methodology",
     author="Fabio Batalha",
     author_email="scielo-dev@googlegroups.com",
@@ -32,8 +29,7 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     dependency_links=['http://github.com/scieloorg/xylose/tarball/master#egg=xylose'],
-    setup_requires=["nose>=1.0", "coverage"],
     install_requires=install_requires,
     tests_require=tests_require,
-    test_suite="nose.collector",
+    test_suite="tests",
 )
